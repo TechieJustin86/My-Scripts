@@ -1,4 +1,13 @@
-﻿# Define Excel file paths
+<# 
+To do's
+> delegate
+>> Connect to Office 365 to set delegate Email.
+> Ensure worksheets are loaded
+>> Write out what sheet's loaded or didnt load. 
+    
+#>
+ 
+ # Define Excel file paths
 $excelFile1 = "C:\Temp\TermainatedStaff.xlsx"
 $excelFile2 = "C:\Temp\UserAccountCreation.xlsx"
 
@@ -51,7 +60,6 @@ function Get-DateThreeMonthsFromNow {
     return (Get-Date).AddMonths(3).ToString("MM/dd/yyyy")
 }
 
-
 $firstAndLastName = Read-Host "Enter the First and Last Name of the terminated employee (First Last)"
 $nameParts = $firstAndLastName -split '\s+'
     if ($nameParts.Count -ne 2) {
@@ -95,7 +103,6 @@ do {
         $lastName = $nameParts[1]
     }
 } while (!$account)
-
 
 # Generate random password and update the account
 $password = Generate-RandomPassword
@@ -186,7 +193,6 @@ $worksheet1.Cells[$startRow, 8].Value = if ($enableAccount) { "Remove email acce
 $worksheet1.Cells[$startRow, 9].Value = $password
 $worksheet1.Cells[$startRow, 10].Value = if (![string]::IsNullOrEmpty($delegateEmail)) { "Delegated to: $delegateEmail" } else { "No delegation" }
 $worksheet1.Cells[$startRow, 11].Value = $UserSid.SID
-
 
 # Save and close Excel files
 try {
