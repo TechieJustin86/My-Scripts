@@ -1,10 +1,12 @@
 The User Account Creation PowerShell script pulls information from an Excel sheet. Below, I will explain the purpose of each sheet. At the end of this document, I have listed some ideas and improvements that I am considering.
 
+The ideal of this script is to be able to use this anywhere without modifying the script. Only setting up the Excel file. Whitch sould be static to some degree. 
+
 Important Note:
 Each sheet contains a header. Do not modify the header as it aligns with the script's functionality.
 
 My companies OU is setup something like below. 
-Wanted to mention this below it is how some one the script is built using this model. 
+Wanted to mention this because it is how some of the script is built using this model.
 
 OU=Office1-4,OU=Departments,OU=users,OU=comapny,DC=domain,DC=local
 OU=Departments,OU=Office2,OU=Departments,OU=users,OU=comapny,DC=domain,DC=local
@@ -39,4 +41,5 @@ Sheet: "Office Location"
 
 Ideas and Improvements:
 Remove "Department" header from sheet' " Department Manager, Department OU, Office Location all have an header "Department". and only list it once in the file.
+Improve OU mapping in the Excel sheet. 
 
