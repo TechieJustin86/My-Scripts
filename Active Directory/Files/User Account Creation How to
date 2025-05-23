@@ -1,0 +1,101 @@
+Sheet: Job Title Groups
+Notes on Job Title to Security Group Layout
+This layout maps job titles to security groups based on group classifications (Group 1–5). It’s a template for assigning access rights.
+🔹 Purpose
+To provide a simple, repeatable structure for assigning security groups to job titles within different organizational groups.
+🔹 How It Works
+Each row (Group 1–5) represents a security group and/or distribution group.
+Each column (Job Title 1–5) represents a job title within that group.
+All job titles within a group are assigned to the same security group (e.g., all titles in Group 2 use Security Group 2).
+🔹 What to Change
+When using this layout:
+Replace job titles ("Job Title 1", etc.) with real job roles for each group.
+Replace security groups ("Security Group #") with the security group or distribution group that is assigned to that job title. 
+
+Sheet: Department Manager
+Notes on Manager to Department Mapping
+This layout is used to define which manager is responsible for which department. It serves as a quick reference or template for assigning departmental ownership.
+🔹 Purpose
+To clearly map each manager to their corresponding department for organizational clarity, approvals, or access delegation.
+🔹 How It Works
+Each row connects a Manager to a Department.
+This structure ensures each department has a designated manager.
+🔹 What to Change
+When reusing this layout:
+Update manager names ("Manager 1", etc.) with actual names or titles (e.g., "Jane Doe").
+Replace department names ("Department 1", etc.) with real departments (e.g., "Finance", "HR").
+
+Sheet: Department OU
+Notes on Department to OU Path Mapping
+This layout links each department to its corresponding Organizational Unit (OU) path in Active Directory. It’s designed to help with user account creation.
+🔹 Purpose
+To provide a clear reference for where each department’s users should be placed in Active Directory.
+🔹 How It Works
+Each Department is paired with a specific OU path.
+The OU path indicates the exact location in AD where accounts for that department should reside.
+🔹 What to Change
+When reusing this layout:
+Update department names ("Department 1", etc.) to actual department names.
+Adjust the OU path to match your real Active Directory structure:
+Replace placeholder values like Domain, org, and Departments X with your actual domain and OU names.
+Ensure the path reflects the correct nested OU structure (e.g., Departments under Users).
+
+Sheet: Domain ( This sheet is used for the Termainated Staff script.
+Notes on Domain and OU Configuration Layout
+This layout defines the domain details and associated Organizational Unit (OU) paths used for managing user accounts in Active Directory across
+environments.
+🔹 Purpose
+To standardize the domain names, company identifier, and the OUs used for active and disabled users.
+🔹 How It Works
+Domainorg / Domaincom: Represent different domain values in the Termainated Staff script.
+Company: The name of the organization (used for identification or labeling).
+EnabledOU: The OU path where active users are placed.
+DisabledOU: The OU path where disabled or terminated user accounts are moved.
+🔹 What to Change
+When adapting this layout:
+Change the company name to reflect your organization.
+Adjust OU paths to reflect your AD structure.
+
+Sheet: Office OU
+Notes on Office to OU Path Mapping
+This layout is used to define which Organizational Unit (OU) path in Active Directory is associated with each office location. It's useful for managing
+user accounts by physical location or branch.
+🔹 Purpose
+To map office locations to their corresponding OUs in Active Directory, enabling location-based user provisioning and policy application.
+🔹 How It Works
+Each Office is paired with an OUPath that reflects its organizational structure in AD.
+The path follows a nested structure under Departments and Users.
+🔹 What to Change
+When reusing this layout:
+Update office names ("Office 1", etc.) to match real office or site names (e.g., "Chicago", "London").
+Edit OU paths to reflect your actual AD hierarchy:
+Replace placeholder values like Office X, Domain, and org with actual office names and domain details.
+Ensure consistency with your AD structure.
+
+Sheet: Office Location
+Notes on Department to Office Mapping
+This layout connects each department to a specific office location.
+🔹 Purpose
+To establish which physical office each department belongs to, aiding in organizational planning and resource allocation.
+🔹 How It Works
+Each Department is assigned an Office.
+This helps link departments to their physical locations for communication, logistics, or IT management.
+🔹 What to Change
+When updating this layout:
+Replace department names with actual department titles.
+Update office names to reflect real office locations.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
