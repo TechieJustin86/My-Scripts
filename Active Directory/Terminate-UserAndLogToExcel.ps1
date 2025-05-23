@@ -1,51 +1,64 @@
-<# 
-To do's
-> delegate
->> Connect to Office 365 to set delegate Email.
-> Ensure worksheets are loaded
->> Write out what sheet's loaded or didnt load. 
-    
+<#
+This PowerShell script manages the termination process for an employee in Active Directory and updates the status in an Excel file. 
+It checks and installs required modules, handles account management (disabling/enabling, password reset, group membership removal), 
+updates Exchange Online mailbox permissions, and records the employee's termination details in the specified Excel sheet.
+
+You MUST have the Sharepoint folder Synced to your computer or point $excelFile to the file location.
+
 #>
- 
- # Define Excel file paths
-$excelFile1 = "C:\Temp\TermainatedStaff.xlsx"
-$excelFile2 = "C:\Temp\UserAccountCreation.xlsx"
+# Check if the required module are available
+$modules = @("ImportExcel", "ActiveDirectory", "ExchangeOnlineManagement")
 
-# Load Excel workbooks
-$excel1 = Open-ExcelPackage -Path $excelFile1
-$worksheet1 = $excel1.Workbook.Worksheets["Terminated"]
-
-$excel2 = Open-ExcelPackage -Path $excelFile2
-$worksheet2 = $excel2.Workbook.Worksheets["Domain"]
-
-# Ensure worksheets are loaded
-if ($null -eq $worksheet1 -or $null -eq $worksheet2) {
-    Write-Host "One or both worksheets could not be found. Please check worksheet names."
-    Close-ExcelPackage $excel1
-    Close-ExcelPackage $excel2
-    exit
-}
-
-# Parse OU data from the "Domain" workbook
-$UserOU = @{}
-$sheetNameDomainData = Import-Excel -Path $excelFile2 -WorksheetName "Domain"
-
-if ($sheetNameDomainData) {
-    foreach ($row in $sheetNameDomainData) {
-        if ($row.EnabledOU) {
-            $UserOU["EnabledOU"] = $row.EnabledOU
-        }
-        if ($row.DisabledOU) {
-            $UserOU["DisabledOU"] = $row.DisabledOU
+foreach ($module in $modules) {
+    if (-not (Get-Module -ListAvailable -Name $module)) {
+        Write-Host "$module module is not installed. Installing now."
+        try {
+            Install-Module -Name $module -Force -Scope CurrentUser
+        } catch {
+            Write-Host "Failed to install $module module. Error: $($_.Exception.Message)"
+            exit
         }
     }
 }
 
-# Assign OU values
-$EnabledOU = $UserOU["EnabledOU"]
-$DisabledOU = $UserOU["DisabledOU"]
+# Set Execution Policy to bypass for the current session
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
-# Function to generate a random password
+# Try to connect to Exchange Online
+try {
+    Connect-ExchangeOnline
+} catch {
+    Write-Host "Failed to connect to Exchange Online. Error: $_"
+    exit
+}
+
+# Get logged-in user's name for Sharpoint mapping. Comment out if you not going to use sharepoint.
+$loggedInUser = (Get-WmiObject -Class Win32_ComputerSystem | Select-Object -ExpandProperty UserName).Split("\")[-1]
+
+# Path to the Excel file. Edit this to the file path if needed. The file is TermainatedStaff
+$excelFile = "C:\Users\$loggedInUser\TermainatedStaff.xlsx"
+$worksheetName = "Terminated"
+
+# Enabled OU
+$EnabledOU = "OU=XXX,DC=XXX,DC=XXX"
+
+# Disabled OU
+$DisabledOU = "OU=XXX,DC=XXX,DC=XXX"
+
+# Open the Excel file
+$excel = Open-ExcelPackage -Path $excelFile
+$worksheet = $excel.Workbook.Worksheets[$worksheetName]
+
+# Check if the worksheet exists
+if ($null -eq $worksheet) {
+    Write-Host "Worksheet '$worksheetName' not found in the Excel file."
+    exit
+}
+
+# Get the next available row number to append new data
+$startRow = $worksheet.Dimension.End.Row + 1
+
+# Function to generate random password (15 characters: 5 uppercase, 5 lowercase, 3 numbers, 2 symbols)
 function Generate-RandomPassword {
     $uppercase = -join ((65..90) | Get-Random -Count 5 | ForEach-Object {[char]$_})
     $lowercase = -join ((97..122) | Get-Random -Count 5 | ForEach-Object {[char]$_})
@@ -55,16 +68,19 @@ function Generate-RandomPassword {
     return -join ($password.ToCharArray() | Get-Random -Count $password.Length)
 }
 
-# Function to calculate a date 3 months from today
+# Function to calculate date 3 months from today
 function Get-DateThreeMonthsFromNow {
     return (Get-Date).AddMonths(3).ToString("MM/dd/yyyy")
 }
 
+# Input First and Last Name of the terminated employee
 $firstAndLastName = Read-Host "Enter the First and Last Name of the terminated employee (First Last)"
-$nameParts = $firstAndLastName -split '\s+'
-    if ($nameParts.Count -ne 2) {
-    Write-Host "Invalid input! Please provide both first and last names separated by a space."
-    }
+
+$nameParts = $firstAndLastName -split '\s+' # Splits by any whitespace
+if ($nameParts.Count -ne 2) {
+    Write-Host "Please provide both first and last names separated by a space!"
+    exit
+}
 
 $firstName = $nameParts[0]
 $lastName = $nameParts[1]
@@ -73,7 +89,7 @@ $lastName = $nameParts[1]
 $delegateEmail = Read-Host "Enter the delegate email (leave blank if not applicable)"
 
 # Input option to keep the account enabled (Y/N)
-$enableAccount = (Read-Host "Keep Account Enabled (Y or N)").Trim().ToUpper()
+$enableAccount = Read-Host "Keep Account Enabled (Y or N)"
 if ($enableAccount -ne 'Y' -and $enableAccount -ne 'N') {
     Write-Host "Invalid input! Please enter 'Y' or 'N'."
     exit
@@ -81,30 +97,22 @@ if ($enableAccount -ne 'Y' -and $enableAccount -ne 'N') {
 $enableAccount = $enableAccount -eq 'Y'
 
 # Input option to keep group memberships (Y/N)
-$keepGroups = (Read-Host "Keep Group Memberships (Y or N)").Trim().ToUpper()
+$keepGroups = Read-Host "Keep Group Memberships (Y or N)"
 if ($keepGroups -ne 'Y' -and $keepGroups -ne 'N') {
     Write-Host "Invalid input! Please enter 'Y' or 'N'."
     exit
 }
 $keepGroups = $keepGroups -eq 'Y'
 
-Write-Host "Searching for user: First Name: $firstName, Last Name: $lastName"
+# Get user account
+$account = Get-ADUser -Filter {GivenName -eq $firstName -and Surname -eq $lastName} -SearchBase $EnabledOU
 
-do {
-    $account = Get-ADUser -Filter {GivenName -eq $firstName -and Surname -eq $lastName} -SearchBase $EnabledOU
+if (!$account) {
+    Write-Host "User not found in the specified OU!"
+    exit
+}
 
-    if (!$account) {
-        Write-Host "User not found in the specified OU: $EnabledOU. Please check the name and try again."
-        $retry = Read-Host "Do you want to retry? (Y/N)"
-        if ($retry -ne 'Y') { exit }
-        $firstAndLastName = Read-Host "Enter the First and Last Name of the terminated employee (First Last)"
-        $nameParts = $firstAndLastName -split '\s+'
-        $firstName = $nameParts[0]
-        $lastName = $nameParts[1]
-    }
-} while (!$account)
-
-# Generate random password and update the account
+# Generate random password and set it
 $password = Generate-RandomPassword
 Set-ADAccountPassword -Identity $account.SamAccountName -Reset -NewPassword (ConvertTo-SecureString $password -AsPlainText -Force) -Confirm:$false
 
@@ -178,28 +186,22 @@ if (-not $enableAccount) {
     Write-Host "Account has been enabled and remains in the current OU."
 }
 
-# Get the next available row number in the "Terminated" worksheet
-$startRow = $worksheet1.Dimension.End.Row + 1
+# Write data to Excel
+$worksheet.Cells[$startRow, 1].Value = "$firstName $lastName"
+$worksheet.Cells[$startRow, 2].Value = $account.SamAccountName
+$worksheet.Cells[$startRow, 3].Value = if ($enableAccount) { "Enabled" } else { "Disabled" }
+$worksheet.Cells[$startRow, 4].Value = if ($keepGroups) { "Kept" } else { "Removed" }
+$worksheet.Cells[$startRow, 5].Value = "Yes"
+$worksheet.Cells[$startRow, 6].Value = if ($enableAccount) { "Email-Enabled" } else { "Email-Disabled" }
+$worksheet.Cells[$startRow, 7].Value = "Terminated on $today"
+$worksheet.Cells[$startRow, 8].Value = if ($enableAccount) { "Remove email access on $removeEmailAccessDate" } else { "Not applicable (account disabled)" }
+$worksheet.Cells[$startRow, 9].Value = $password
+$worksheet.Cells[$startRow, 10].Value = if (![string]::IsNullOrEmpty($delegateEmail)) { "Delegated to: $delegateEmail" } else { "No delegation" }
+$worksheet.Cells[$startRow, 11].Value = $UserSid.SID
 
-# Write termination details to the "Terminated" worksheet
-$worksheet1.Cells[$startRow, 1].Value = "$firstName $lastName"
-$worksheet1.Cells[$startRow, 2].Value = $account.SamAccountName
-$worksheet1.Cells[$startRow, 3].Value = if ($enableAccount) { "Enabled" } else { "Disabled" }
-$worksheet1.Cells[$startRow, 4].Value = if ($keepGroups) { "Kept" } else { "Removed" }
-$worksheet1.Cells[$startRow, 5].Value = "Yes"
-$worksheet1.Cells[$startRow, 6].Value = if ($enableAccount) { "Email-Enabled" } else { "Email-Disabled" }
-$worksheet1.Cells[$startRow, 7].Value = "Terminated on $today"
-$worksheet1.Cells[$startRow, 8].Value = if ($enableAccount) { "Remove email access on $removeEmailAccessDate" } else { "Not applicable (account disabled)" }
-$worksheet1.Cells[$startRow, 9].Value = $password
-$worksheet1.Cells[$startRow, 10].Value = if (![string]::IsNullOrEmpty($delegateEmail)) { "Delegated to: $delegateEmail" } else { "No delegation" }
-$worksheet1.Cells[$startRow, 11].Value = $UserSid.SID
-
-# Save and close Excel files
 try {
-    $excel1.Save()
-    $excel2.Save()
-    Close-ExcelPackage $excel1
-    Close-ExcelPackage $excel2
+    $excel.Save()
+    Close-ExcelPackage $excel
     Write-Host "Data successfully exported to Excel."
 } catch {
     Write-Host "Failed to save or close the Excel file. Error: $_"
