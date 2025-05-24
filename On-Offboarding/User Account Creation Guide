@@ -1,3 +1,5 @@
+Best to download each file and place it in C:\Temp . But you can out the file where you like, you will need to update the file paths in the scripts. 
+
 The Staff-Onboarding PowerShell script pulls information from an Excel file called Staff-AccountData. Below, I will explain the purpose of each sheet. At the end of this document, I have listed some ideas and improvements that I am considering.
 
 The ideal of this script is to be able to use this anywhere without modifying the script. Only setting up the Excel file. Which should be static to some degree. 
