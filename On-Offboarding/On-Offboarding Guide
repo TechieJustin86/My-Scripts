@@ -37,3 +37,10 @@ File: Staff-Termainated
 This file stores the name of every person you use in the Staff-Offboarding script. 
 
 I been using a testing server with Active Directory Users and Computers installed. The Staff-AccountDataSample file is a sample file that I use to test out the scripts that I write. As long as you structure the excel file to your AD environment, everything should work pretty good. 
+
+Bedtime notes:
+what if user has more than 2 names.
+different user name and email structures. 
+what if multiple user with first and last name?
+search tru grab highest # then add 1.
+
