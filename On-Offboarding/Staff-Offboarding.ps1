@@ -1,12 +1,11 @@
-﻿<#
+<#
 This PowerShell script manages the termination process for an employee in Active Directory and updates the status in an Excel file. 
 It checks and installs required modules, handles account management (disabling/enabling, password reset, group membership removal), 
 updates Exchange Online mailbox permissions, and records the employee's termination details in the specified Excel sheet.
-
-You can use SharePoint folder to store the file or point $excelFile to the file location.
-
+Updated 5/26/25
 #>
 
+<#
 # Check if the required modules are available and import them
 $modules = @("ImportExcel", "ActiveDirectory", "ExchangeOnlineManagement")
 
@@ -23,10 +22,13 @@ foreach ($module in $modules) {
     }
     Import-Module $module -ErrorAction Stop
 }
+#>
 
 # Set Execution Policy to bypass for the current session
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 
+<# 
+# Comment out if you dont want to access Exchange Online
 # Connect to Exchange Online with error handling
 Write-Host "Connecting to Exchange Online..."
 try {
@@ -36,12 +38,14 @@ try {
     Write-Warning "Failed to connect to Exchange Online. Error: $_"
     exit
 }
+#>
 
-# Get logged-in user's name for SharePoint mapping. Comment out if you not going to use SharePoint.
-$loggedInUser = $env:USERNAME
+# Get logged-in user's name for Logged on user mapping. Comment out if you like.
+#$loggedInUser = $env:USERNAME
+#$terminatedStaffFilePath  = "C:\Users\$loggedInUser\Staff-Termainated.xlsx"
 
 # Path to the Excel file. Edit this to the file path if needed.
-$terminatedStaffFilePath  = "C:\Users\$loggedInUser\Staff-Termainated.xlsx"
+$terminatedStaffFilePath  = "C:\Temp\Staff-Termainated.xlsx"
 $domainOUsFilePath  = "C:\Temp\Staff-AccountData.xlsx"
 $worksheetName = "Terminated"
 $sheetNameDomain = "Domain"
@@ -58,6 +62,7 @@ try {
 $TerminateOU = @{
     EnabledOU = $null
     DisabledOU = $null
+    UserOU = $null
 }
 
 if ($sheetNameDomainData) {
@@ -68,12 +73,16 @@ if ($sheetNameDomainData) {
         if ($row.DisabledOU) {
             $TerminateOU["DisabledOU"] = $row.DisabledOU
         }
+        if ($row.UserOU) {
+            $TerminateOU["UserOU"] = $row.UserOU
+        }
     }
 }
 
 # Assign OU variables
 $EnabledOU = $TerminateOU["EnabledOU"]
 $DisabledOU = $TerminateOU["DisabledOU"]
+$UserOU = $TerminateOU["UserOU"]
 
 if (-not $EnabledOU -or -not $DisabledOU) {
     Write-Host "EnabledOU or DisabledOU not found in the domain sheet."
@@ -124,7 +133,7 @@ if ($nameParts.Count -ne 2) {
 $firstName = $nameParts[0]
 $lastName = $nameParts[1]
 
-# Input Delegate Email if applicable.
+# Input Delegate Email if applicable.Remove if not needed
 $delegateEmail = Read-Host "Enter the delegate email (leave blank if not applicable)"
 
 # Input option to keep the account enabled (Y/N)
@@ -145,7 +154,7 @@ $keepGroups = $keepGroupsInput -eq 'Y'
 
 # Get user account with error handling
 try {
-    $account = Get-ADUser -Filter {GivenName -eq $firstName -and Surname -eq $lastName} -SearchBase $EnabledOU -ErrorAction Stop
+    $account = Get-ADUser -Filter {GivenName -eq $firstName -and Surname -eq $lastName} -SearchBase $UserOU -ErrorAction Stop
 } catch {
     Write-Host "User not found in the specified OU! Error: $_"
     exit
@@ -165,12 +174,14 @@ try {
     exit
 }
 
-# Hide from Office 365 address list.
+<#
+# Hide from Office 365 address list. Comment out or remove if you are not going to use this.
 try {
     Set-ADUser -Identity $account.SamAccountName -Replace @{msExchHideFromAddressLists=$true} -Confirm:$false -ErrorAction Stop
 } catch {
     Write-Host "Failed to hide user from address lists. Error: $_"
 }
+#>
 
 # Add today's date to Notes in Telephones tab (using -Replace to update the 'Info' field)
 $today = Get-Date -Format "MM/dd/yyyy"
@@ -187,7 +198,7 @@ $UserSid = [PSCustomObject]@{
     SID               = $account.SID.Value
 }
 
-# Remove all groups except 'Domain Users' if checkbox for removing groups is unchecked
+# Remove all groups except 'Domain Users' based on the input
 if (-not $keepGroups) {
     try {
         $groups = Get-ADUser $account.SamAccountName -Property MemberOf -ErrorAction Stop | Select-Object -ExpandProperty MemberOf
@@ -231,16 +242,19 @@ if (-not $enableAccount) {
         }
     }
 
-    # Set extensionAttribute5 to "Terminated - No Email"
+<#
+    # Set extensionAttribute5 to "Terminated - No Email"Good for reporting. If your AD doesn't have Exchange schema extensions, these attributes might not exist.
     try {
         Set-ADUser -Identity $account.SamAccountName -Replace @{extensionAttribute5="Terminated - No Email"} -Confirm:$false -ErrorAction Stop
     } catch {
         Write-Host "Failed to set extensionAttribute5. Error: $_"
     }
+#>
 
     Write-Host "Account has been disabled and moved to Disabled Employees OU."
+
 } else {
-    # Enable account
+    # If account stays enabled
     try {
         Enable-ADAccount -Identity $account.SamAccountName -Confirm:$false -ErrorAction Stop
     } catch {
@@ -257,14 +271,19 @@ if (-not $enableAccount) {
         Write-Host "Failed to update description. Error: $_"
     }
 
-    # Set extensionAttribute5 to "Terminated - Email"
+<#
+    # Set extensionAttribute5 to "Terminated - Email". Good for reporting. If your AD doesn't have Exchange schema extensions, these attributes might not exist.
     try {
         Set-ADUser -Identity $account.SamAccountName -Replace @{extensionAttribute5="Terminated - Email"} -Confirm:$false -ErrorAction Stop
     } catch {
         Write-Host "Failed to set extensionAttribute5. Error: $_"
     }
+#>
+    }
 
-    # Only add Mailbox Permission if a delegate is specified
+<#
+#region 
+# This add's email delegation in Outlook 365.
     if (![string]::IsNullOrEmpty($delegateEmail)) {
         try {
             Add-MailboxPermission -Identity $account.SamAccountName -User $delegateEmail -AccessRights FullAccess -InheritanceType All -ErrorAction Stop
@@ -275,11 +294,13 @@ if (-not $enableAccount) {
     } else {
         Write-Host "No delegate specified, skipping email delegation."
     }
+#endregion
+#>
 
-    Write-Host "Account has been enabled and remains in the current OU."
-}
+Write-Host "Account has been enabled and remains in the current OU."
 
-# Write data to Excel
+
+# Write data to Staff-Termainated file
 $worksheet.Cells[$startRow, 1].Value = "$firstName $lastName"
 $worksheet.Cells[$startRow, 2].Value = $account.SamAccountName
 $worksheet.Cells[$startRow, 3].Value = if ($enableAccount) { "Enabled" } else { "Disabled" }
