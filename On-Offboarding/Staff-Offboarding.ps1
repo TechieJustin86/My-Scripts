@@ -42,10 +42,10 @@ try {
 
 # Get logged-in user's name for Logged on user mapping. Comment out if you like.
 #$loggedInUser = $env:USERNAME
-#$terminatedStaffFilePath  = "C:\Users\$loggedInUser\Staff-Termainated.xlsx"
+#$TerminatedStaffFilePath  = "C:\Users\$loggedInUser\Staff-Terminated.xlsx"
 
 # Path to the Excel file. Edit this to the file path if needed.
-$terminatedStaffFilePath  = "C:\Temp\Staff-Termainated.xlsx"
+$TerminatedStaffFilePath  = "C:\Temp\Staff-Terminated.xlsx"
 $domainOUsFilePath  = "C:\Temp\Staff-AccountData.xlsx"
 $worksheetName = "Terminated"
 $sheetNameDomain = "Domain"
@@ -89,12 +89,12 @@ if (-not $EnabledOU -or -not $DisabledOU) {
     exit
 }
 
-# Open Termainated Staff file for updating.
+# Open Terminated Staff file for updating.
 try {
-    $excel = Open-ExcelPackage -Path $terminatedStaffFilePath -ErrorAction Stop
+    $excel = Open-ExcelPackage -Path $TerminatedStaffFilePath -ErrorAction Stop
     $worksheet = $excel.Workbook.Worksheets[$worksheetName]
 } catch {
-    Write-Host "Failed to open the Excel file '$terminatedStaffFilePath'. Error: $_"
+    Write-Host "Failed to open the Excel file '$TerminatedStaffFilePath'. Error: $_"
     exit
 }
 
@@ -121,8 +121,8 @@ function Get-DateThreeMonthsFromNow {
     return (Get-Date).AddMonths(3).ToString("MM/dd/yyyy")
 }
 
-# Input First and Last Name of the terminated employee
-$firstAndLastName = Read-Host "Enter the First and Last Name of the terminated employee."
+# Input First and Last Name of the Terminated employee
+$firstAndLastName = Read-Host "Enter the First and Last Name of the Terminated employee."
 
 $nameParts = $firstAndLastName -split '\s+' # Splits by any whitespace
 if ($nameParts.Count -ne 2) {
@@ -300,7 +300,7 @@ if (-not $enableAccount) {
 Write-Host "Account has been enabled and remains in the current OU."
 
 
-# Write data to Staff-Termainated file
+# Write data to Staff-Terminated file
 $worksheet.Cells[$startRow, 1].Value = "$firstName $lastName"
 $worksheet.Cells[$startRow, 2].Value = $account.SamAccountName
 $worksheet.Cells[$startRow, 3].Value = if ($enableAccount) { "Enabled" } else { "Disabled" }
