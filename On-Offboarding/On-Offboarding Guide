@@ -9,7 +9,7 @@ The ideal of this script is to be able to use this anywhere without modifying th
 
 Important Note:
 Each sheet contains a header. Do not modify the header as it aligns with the script's functionality.
-
+File: Staff-AccountDate.xlsx
 Sheet: "Job Title Groups"
 >  Column A contains "Group#". The "Group#" should increment according to the job title that has the most security groups associated with it.
 >  The first row lists each job title.
@@ -30,5 +30,8 @@ Sheet: "Office OU"
 
 Sheet: "Office Location"
 >  The "Department" column must match the "Office" column.
+
+File: Staff-Termainated
+This file stores the name of every person you use in the Staff-Offboarding script. 
 
 I been using a testing server with Active Directory Users and Computers installed. The Staff-AccountDataSample file is a sample file that I use to test out the scripts that I write. As long as you structure the excel file to your AD environment, everything should work pretty good. 
