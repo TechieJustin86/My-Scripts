@@ -1,12 +1,14 @@
-﻿<#
+<#
 This PowerShell script automates new user creation in Active Directory using a GUI and data from an Excel file.
 It installs required modules, loads configuration data (titles, departments, OUs, domains), and collects user input through a form.
 Based on the input, it generates account details, creates the AD user, assigns the correct OU, sets attributes like title and manager, 
 and adds the user to groups based on their job title.A summary of all actions is displayed at the end.
+Updated 5/26/25
 #>
 
 # Check if the required module are available
-$modules = @("ImportExcel", "ActiveDirectory", "ExchangeOnlineManagement")
+$modules = @("ImportExcel", "ActiveDirectory")
+#ExchangeOnlineManagement
 
 foreach ($module in $modules) {
     if (-not (Get-Module -ListAvailable -Name $module)) {
@@ -23,6 +25,7 @@ foreach ($module in $modules) {
 
 # Path to Excel File
 $excelFile = "C:\Temp\Staff-AccountData.xlsx"
+
 
 # Sheets to load
 $sheetNameGroups = "Job Title Groups"
@@ -130,20 +133,6 @@ Function Show-UserInputForm {
     $FullNameTextBox.Width = 100
     $form.Controls.Add($FullNameTextBox)
 
-    # Security digits
-    $SecuritydigitsLabel = New-Object System.Windows.Forms.Label
-    $SecuritydigitsLabel.Text = "Enter 4 random digits:"
-    $SecuritydigitsLabel.AutoSize = $true
-    $SecuritydigitsLabel.Top = 10
-    $SecuritydigitsLabel.Left = 120
-    $form.Controls.Add($SecuritydigitsLabel)
-
-    $SecuritydigitsBox = New-Object System.Windows.Forms.TextBox
-    $SecuritydigitsBox.Top = 40
-    $SecuritydigitsBox.Left = 120
-    $SecuritydigitsBox.Width = 100
-    $form.Controls.Add($SecuritydigitsBox)
-
     # Title Label and ComboBox
     $titleLabel = New-Object System.Windows.Forms.Label
     $titleLabel.Text = "Title:"
@@ -241,7 +230,6 @@ Function Show-UserInputForm {
         $ouPath = if ($selectedOffice) { $officeOUs[$selectedOffice] } else { $null }
         return @{
             FullName = $FullNameTextBox.Text
-            Securitydigits = $SecuritydigitsBox.Text
             Title = $titleComboBox.SelectedItem
             Manager = $managerComboBox.SelectedItem
             Department = $departmentComboBox.SelectedItem
@@ -282,8 +270,7 @@ function Generate-RandomPassword {
 $password = Generate-RandomPassword
 
 # Create the sAMAccountName and userPrincipalName
-$securitydigits = $userInput.Securitydigits
-$sAMAccountName = "$firstName$securitydigits"
+$sAMAccountName = "$firstName"
 $userPrincipalName = "$sAMAccountName@$($Domains["Domainorg"])"
 $userEmail = "$firstName@$($Domains["Domaincom"])"
 $Company = "$Companies"
