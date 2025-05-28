@@ -1,9 +1,9 @@
-The scripts in this folder is used to easly add and remote staff members from AD. 
+The scripts in this folder are used to easily add and remote staff members from AD. 
 I started these scripts as a hobby of mine. I wanted a free way to add and remove staff members from AD without much work in the back in. Setting everything up takes
-time but once everything is setup. The scripts work pretty good.
+time but once everything is set up. The scripts work pretty well.
 
 Best to download each file and place it in C:\Temp . But you can point the file where you like, you will need to update the file paths in the scripts. 
-Theres a few scripts in the Staff member AD details folder that you can use to pull data from AD to input into the Staff-AccountData file.
+There's a few scripts in the Staff member AD details folder that you can use to pull data from AD to input into the Staff-AccountData file.
 
 The Staff-Onboarding PowerShell script pulls information from the Excel file called Staff-AccountData. Below, I will explain the purpose of each sheet. 
 
@@ -15,36 +15,36 @@ Each sheet contains a header. Do not modify the header as it aligns with the scr
 
 File: Staff-AccountDate.xlsx
 Sheet: "Job Title Groups"
->  The sheet should be the minimum amount of groups a job title is required to have. 
->  Column A contains "Group#". The "Group#" should increment according to the job title that has the most security groups associated with it.
->  The first row lists each job title.
->  Leave A1 blank.
->  The script " StaffMemberDetails.ps1 " in folder " Staff member AD details " will export information from all users under a given OU into 3 different sheets and
+>  The sheet should be the minimum amount of groups a job title is required to have. 
+>  Column A contains "Group#". The "Group#" should increment according to the job title that has the most security groups associated with it.
+>  The first row lists each job title.
+>  Leave A1 blank.
+>  The script " StaffMemberDetails.ps1 " in folder " Staff member AD details " will export information from all users under a given OU into 3 different sheets and
 saves the data to C:\Temp\UserDetailsReport1.xlsx. You can use this to build the Staff-AccountData excel file.
-Sheet 1 - User Details     >  Full Name,Email Address,Sam Account Name,Mobile Phone,IP Phone,Title,Department,Manager
-Sheet 2 - User Groups      >  User groups that each staff membet has assigned to them
-Sheet 3 - Job Title Groups >  Loops thru everyones job title and pulls the groups from each.
+Sheet 1 - User Details     >  Full Name,Email Address,SamAccountName,Mobile Phone,IP Phone,Title,Department,Manager
+Sheet 2 - User Groups      >  User groups that each staff member has assigned to them
+Sheet 3 - Job Title Groups >  Loops thru everyone's job title and pulls the groups from each.
 
 Sheet: "Department Manager"
->  The manager's name should go under the "Manager" header, and the department name should be under the "Department" header. Who that staff member directly reports to.
+>  The manager's name should go under the "Manager" header, and the department name should be under the "Department" header. Who that staff member directly reports to.
 
 Sheet: "Department OU"
->  Department column must align with the "OUPath" column.
->  Department names go under the "Department" header, and their corresponding OU paths go under the "OUPath" header.
+>  Department column must align with the "OUPath" column.
+>  Department names go under the "Department" header, and their corresponding OU paths go under the "OUPath" header.
 
 Sheet: "Domain"
->  Only edit the OU path for EnabledOU and DisabledOU. 
->  Domainorg and domaincom will need to be updated in row A2 and B2. If you are using 2 different domains. If you are only using one, just update the domaincom in B2.
+>  Only edit the OU path for EnabledOU and DisabledOU. 
+>  Domainorg and domaincom will need to be updated in row A2 and B2. If you are using 2 different domains. If you are only using one, just update the domaincom in B2.
 
 Sheet: "Office OU"
->  The "Office" column must align with the "OUPath" column.
+>  The "Office" column must align with the "OUPath" column.
 
 Sheet: "Office Location"
->  The "Department" column must match the "Office" column.
+>  The "Department" column must match the "Office" column.
 
-File: Staff-Termainated
+File: Staff-Terminated
 This file stores the name of every person you use in the Staff-Offboarding script. 
 
-I been using a testing server with Active Directory Users and Computers installed. The Staff-AccountDataSample file is a sample file that I use to test out the scripts that I write. As long as you structure the excel file to your AD environment, everything should work pretty good. 
+I have been using a testing server with Active Directory Users and Computers installed. The Staff-AccountDataSample file is a sample file that I use to test out the scripts that I write. As long as you structure the excel file to your AD environment, everything should work pretty good. 
 
 Bedtime notes:
