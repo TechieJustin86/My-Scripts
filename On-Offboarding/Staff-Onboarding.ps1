@@ -362,7 +362,6 @@ $Title = $userInput.Title
 $Department = $selectedDepartment
 $managerName = $userInput.Manager
 $manager = Get-ADUser -Filter { Name -eq $managerName }
-$managerDN = if ($manager) { $manager.DistinguishedName } else { $null }
 
 # Determine Office Location based on department
 $officeName = if ($OfficeLocations.ContainsKey($selectedDepartment)) { 
