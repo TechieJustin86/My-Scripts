@@ -3,6 +3,9 @@ This PowerShell script automates new user creation in Active Directory using a G
 It installs required modules, loads configuration data (titles, departments, OUs, domains), and collects user input through a form.
 Based on the input, it generates account details, creates the AD user, assigns the correct OU, sets attributes like title and manager, 
 and adds the user to groups based on their job title.A summary of all actions is displayed at the end.
+Notes: 
+Only handles first and last name. Way to many ways to handle married and hyphenated last names.
+
 Updated 5/26/25
 #>
 
@@ -88,9 +91,6 @@ if ($officeLocationData) {
 $Domains = @{}
 if ($sheetNameDomainData) {
     foreach ($row in $sheetNameDomainData) {
-        if ($row.Domainorg) {
-            $Domains["Domainorg"] = $row.Domainorg
-        }
         if ($row.Domaincom) {
             $Domains["Domaincom"] = $row.Domaincom
         }
@@ -269,27 +269,68 @@ function Generate-RandomPassword {
 }
 $password = Generate-RandomPassword
 
-# Create the sAMAccountName and userPrincipalName
-$sAMAccountName = "$firstName"
-$userPrincipalName = "$sAMAccountName@$($Domains["Domainorg"])"
-$userEmail = "$firstName@$($Domains["Domaincom"])"
-$Company = "$Companies"
+# Create the sAMAccountName, userPrincipalName and email.
+   # First initial (uppercase) + last name (lowercase)
+    $firstInitial = $firstName.Substring(0,1).ToUpper()
+    $lastNameFormatted = $lastName.ToLower()
+    $sAMAccountName = "$firstInitial$lastNameFormatted"
+    $userPrincipalName = "$sAMAccountName@$($Domains["Domaincom"])"
+    $userEmail = "$sAMAccountName@$($Domains["Domaincom"])"
+    $Company = "$Companies"
 
-# Use Domaincom for email
-if ($email) {
-    $selectedDomain = $Domains["Domaincom"]
-    $userEmail = "$email@$selectedDomain"
-}
+<#
+    This block demonstrates how to construct usernames, UPNs, and email addresses based on different formatting rules.
+    
+    EXAMPLE 1: "Justin Becker" → "Jbecker"
+    --------------------------------------
+    # First initial (uppercase) + last name (lowercase)
+    $firstInitial = $firstName.Substring(0,1).ToUpper()
+    $lastNameFormatted = $lastName.ToLower()
+    $baseUsername = "$firstInitial$lastNameFormatted"
 
-# Use Domainorg for sAMAccountName
-if ($sAMAccountName) {
-    $selectedDomain = $Domains["Domainorg"]
-    $userPrincipalName = "$sAMAccountName@$selectedDomain"
-}
+    # Check for existing users and append a number if needed
+    $counter = 0
+    do {
+        if ($counter -eq 0) {
+            $sAMAccountName = $baseUsername
+        } else {
+            $sAMAccountName = "$baseUsername$counter"
+        }
+        $existingUser = Get-ADUser -Filter { SamAccountName -eq $sAMAccountName } -ErrorAction SilentlyContinue
+        $counter++
+    } while ($existingUser)
 
-# Assign OU based on department or office selection
+    $userPrincipalName = "$sAMAccountName@$($Domains["Domaincom"])"
+    $userEmail = "$sAMAccountName@$($Domains["Domaincom"])"
+    $Company = "$Companies"
+
+    EXAMPLE 2: "Justin Becker" → "Justin.Becker"
+    --------------------------------------------
+    # Proper-case first and last names with a dot separator
+    $formattedFirst = $firstName.Substring(0,1).ToUpper() + $firstName.Substring(1).ToLower()
+    $formattedLast = $lastName.Substring(0,1).ToUpper() + $lastName.Substring(1).ToLower()
+    $baseUsername = "$formattedFirst.$formattedLast"
+
+    # Ensure uniqueness in AD
+    $counter = 0
+    do {
+        if ($counter -eq 0) {
+            $sAMAccountName = $baseUsername
+        } else {
+            $sAMAccountName = "$baseUsername$counter"
+        }
+        $existingUser = Get-ADUser -Filter { SamAccountName -eq $sAMAccountName } -ErrorAction SilentlyContinue
+        $counter++
+    } while ($existingUser)
+
+    $userPrincipalName = "$sAMAccountName@$($Domains["Domaincom"])"
+    $userEmail = "$sAMAccountName@$($Domains["Domaincom"])"
+    $Company = "$Companies"
+#>
+
+# Assign OU based on department or office selection. Assuming you are storing the selected office as OUPath
 $selectedDepartment = $userInput.Department
-$selectedOffice = $userInput.OUPath  # Assuming you are storing the selected office as OUPath
+$selectedOffice = $userInput.OUPath
 
 # Check if office is selected and map to department OU
 if ($selectedOffice -and $OfficeLocations.ContainsValue($selectedOffice)) {
@@ -321,6 +362,7 @@ $Title = $userInput.Title
 $Department = $selectedDepartment
 $managerName = $userInput.Manager
 $manager = Get-ADUser -Filter { Name -eq $managerName }
+$managerDN = if ($manager) { $manager.DistinguishedName } else { $null }
 
 # Determine Office Location based on department
 $officeName = if ($OfficeLocations.ContainsKey($selectedDepartment)) { 
@@ -332,28 +374,33 @@ $officeName = if ($OfficeLocations.ContainsKey($selectedDepartment)) {
 # If user does not exist, create it
 if ($null -eq $user) {
     try {
+        $managerDN = if ($manager) { $manager.DistinguishedName } else { $null }
+
         $user = New-ADUser -Name "$firstName $lastName" `
                            -DisplayName "$firstName $lastName" `
                            -GivenName $firstName `
                            -Surname $lastName `
-                           -SamAccountName $samAccountName `
+                           -SamAccountName $sAMAccountName `
                            -UserPrincipalName $userPrincipalName `
                            -Title $Title `
                            -Description $Title `
                            -Department $Department `
                            -Office $officeName `
                            -Company $Company `
-                           -Manager $manager.DistinguishedName `
+                           -Manager $managerDN `
                            -EmailAddress "$userEmail" `
                            -Path $ouPath `
                            -AccountPassword (ConvertTo-SecureString $password -AsPlainText -Force) `
                            -Enabled $true `
                            -PassThru
+
         $outputMessages += "User $firstName $lastName created successfully in AD."
     } catch {
         $outputMessages += "Error creating user $firstName $lastName $_"
     }
 }
+
+Set-ADUser -Identity $user -ChangePasswordAtLogon $true
 
 # Add user to groups based on Title selection
 $selectedGroups = $titleData | Select-Object -ExpandProperty $userInput.Title
