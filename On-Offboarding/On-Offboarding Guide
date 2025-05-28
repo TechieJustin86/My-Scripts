@@ -1,24 +1,32 @@
 The scripts in this folder is used to easly add and remote staff members from AD. 
-I started these scripts as a hobby of mine. I wanted a free way to add and remove staff members from AD without much work in the back in. Setting everything up takes time but once everything is setup. The scripts work pretty good.
+I started these scripts as a hobby of mine. I wanted a free way to add and remove staff members from AD without much work in the back in. Setting everything up takes
+time but once everything is setup. The scripts work pretty good.
 
 Best to download each file and place it in C:\Temp . But you can point the file where you like, you will need to update the file paths in the scripts. 
 Theres a few scripts in the Staff member AD details folder that you can use to pull data from AD to input into the Staff-AccountData file.
 
-The Staff-Onboarding PowerShell script pulls information from an Excel file called Staff-AccountData. Below, I will explain the purpose of each sheet. 
+The Staff-Onboarding PowerShell script pulls information from the Excel file called Staff-AccountData. Below, I will explain the purpose of each sheet. 
 
-The ideal of this script is to be able to use this anywhere without modifying the script. Only setting up the Excel file. Which should be static to some degree. 
+The ideal of this script is to be able to use this anywhere without modifying to much of the script. Only setting up the Excel file. Which should be static to some
+degree. 
 
 Important Note:
 Each sheet contains a header. Do not modify the header as it aligns with the script's functionality. The idea for this file is to be used like a master list.
 
 File: Staff-AccountDate.xlsx
 Sheet: "Job Title Groups"
+>  The sheet should be the minimum amount of groups a job title is required to have. 
 >  Column A contains "Group#". The "Group#" should increment according to the job title that has the most security groups associated with it.
 >  The first row lists each job title.
-> Leave A1 blank.
+>  Leave A1 blank.
+>  The script " StaffMemberDetails.ps1 " in folder " Staff member AD details " will export information from all users under a given OU into 3 different sheets and
+saves the data to C:\Temp\UserDetailsReport1.xlsx. You can use this to build the Staff-AccountData excel file.
+Sheet 1 - User Details     >  Full Name,Email Address,Sam Account Name,Mobile Phone,IP Phone,Title,Department,Manager
+Sheet 2 - User Groups      >  User groups that each staff membet has assigned to them
+Sheet 3 - Job Title Groups >  Loops thru everyones job title and pulls the groups from each.
 
 Sheet: "Department Manager"
->  The manager's name should go under the "Manager" header, and the department name should be under the "Department" header.
+>  The manager's name should go under the "Manager" header, and the department name should be under the "Department" header. Who that staff member directly reports to.
 
 Sheet: "Department OU"
 >  Department column must align with the "OUPath" column.
@@ -26,6 +34,7 @@ Sheet: "Department OU"
 
 Sheet: "Domain"
 >  Only edit the OU path for EnabledOU and DisabledOU. 
+>  Domainorg and domaincom will need to be updated in row A2 and B2. If you are using 2 different domains. If you are only using one, just update the domaincom in B2.
 
 Sheet: "Office OU"
 >  The "Office" column must align with the "OUPath" column.
