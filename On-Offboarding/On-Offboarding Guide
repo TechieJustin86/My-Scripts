@@ -2,6 +2,8 @@ The scripts in this folder are used to easily add and remote staff members from 
 I started these scripts as a hobby of mine. I wanted a free way to add and remove staff members from AD without much work in the back in. Setting everything up takes
 time but once everything is set up. The scripts work pretty well.
 
+Just a note—these scripts were built at a small company I worked for: under 50 employees, 2 techs, tight budget. No room for 3rd-party tools. Hiring or terminations went from 3 hours to 30 mins.
+
 Best to download each file and place it in C:\Temp . But you can point the file where you like, you will need to update the file paths in the scripts. 
 There's a few scripts in the Staff member AD details folder that you can use to pull data from AD to input into the Staff-AccountData file.
 
