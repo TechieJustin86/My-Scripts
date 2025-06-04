@@ -1,0 +1,304 @@
+# Version 2 on my onboarding script. Still working on the kinks.
+
+
+# Load required assemblies
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+# Path to Excel File
+$excelFile = "C:\Temp\Staff-AccountData.xlsx"
+
+# Sheets to load
+$sheetNameGroups = "Job Title Groups"
+$sheetNameUserDetails = "Department Manager"
+$sheetNameDepartmentOU = "Department OU"
+$sheetNameDomain = "Domain"
+$sheetNameOfficeOU = "Office OU"
+$sheetNameOfficeLocation = "Office Location"
+
+# Load Excel data
+$titleData            = Import-Excel -Path $excelFile -WorksheetName $sheetNameGroups
+$userDetails          = Import-Excel -Path $excelFile -WorksheetName $sheetNameUserDetails
+$departmentOUData     = Import-Excel -Path $excelFile -WorksheetName $sheetNameDepartmentOU
+$sheetNameDomainData  = Import-Excel -Path $excelFile -WorksheetName $sheetNameDomain
+$officeOUData         = Import-Excel -Path $excelFile -WorksheetName $sheetNameOfficeOU
+$officeLocationData   = Import-Excel -Path $excelFile -WorksheetName $sheetNameOfficeLocation
+
+# Prepare lists for dropdowns
+$titles     = $titleData | Get-Member -MemberType Properties | Select-Object -ExpandProperty Name
+$managers   = $userDetails | Where-Object { $_.Manager } | Select-Object -ExpandProperty Manager -Unique | Sort-Object
+$departments= $userDetails | Where-Object { $_.Department } | Select-Object -ExpandProperty Department -Unique | Sort-Object
+$offices    = $officeOUData | Where-Object { $_.Office } | Select-Object -ExpandProperty Office -Unique | Sort-Object
+
+# Parse to hash tables
+$DepartmentOUs = @{}
+foreach ($row in $departmentOUData) {
+    if ($row.Department -and $row.OUPath) {
+        $DepartmentOUs[$row.Department] = $row.OUPath
+    }
+}
+
+$OfficeOUs = @{}
+foreach ($row in $officeOUData) {
+    if ($row.Office -and $row.OUPath) {
+        $OfficeOUs[$row.Office] = $row.OUPath
+    }
+}
+
+$OfficeLocations = @{}
+foreach ($row in $officeLocationData) {
+    if ($row.Department -and $row.Office) {
+        $OfficeLocations[$row.Department] = $row.Office
+    }
+}
+
+$domainRow = $sheetNameDomainData | Where-Object { $_.Domaincom } | Select-Object -First 1
+$domain = if ($domainRow) { $domainRow.Domaincom } else { "yourdomain.com" }
+
+# === Theme Settings ===
+$font               = New-Object System.Drawing.Font("Segoe UI", 12)
+$labelColor         = [System.Drawing.Color]::DarkSlateGray
+$textBoxForeColor   = [System.Drawing.Color]::Black
+$textBoxBackColor   = [System.Drawing.Color]::White
+$comboBoxForeColor  = [System.Drawing.Color]::Navy
+$comboBoxBackColor  = [System.Drawing.Color]::White
+$formBackColor      = [System.Drawing.Color]::WhiteSmoke
+$buttonBackColor    = [System.Drawing.Color]::LightGray
+$buttonForeColor    = [System.Drawing.Color]::Black
+
+# === Helper to style controls ===
+function Set-Style($ctrl, [bool]$isCombo = $false) {
+    $ctrl.Font = $font
+    if ($isCombo) {
+        $ctrl.ForeColor = $comboBoxForeColor
+        $ctrl.BackColor = $comboBoxBackColor
+    } else {
+        $ctrl.ForeColor = $textBoxForeColor
+        $ctrl.BackColor = $textBoxBackColor
+    }
+}
+
+# Create GUI form
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Create AD User"
+$form.Size = New-Object System.Drawing.Size(400, 550)
+$form.StartPosition = "CenterScreen"
+$form.BackColor = $formBackColor
+$form.Font = $font
+
+$fields = [ordered]@{
+    FullName    = "Full Name"
+    UserLogin   = "Desired Login"
+    UserEmail   = "Email Address"
+    DeskPhone   = "Desk Phone"
+    CellPhone   = "Cell Phone"
+    Title       = "Title"
+    Department  = "Department"
+    Office      = "Office"
+    Manager     = "Manager"
+    StartDate   = "Start Date"
+}
+
+$inputs = @{}
+$y = 10
+
+foreach ($key in $fields.Keys) {
+    $label = New-Object System.Windows.Forms.Label
+    $label.Text = $fields[$key]
+    $label.Location = New-Object Drawing.Point(10, $y)
+    $label.Size = New-Object Drawing.Size(150, 30)
+    $label.ForeColor = $labelColor
+    $label.Font = $font
+    $form.Controls.Add($label)
+
+    if ($key -eq "StartDate") {
+        $dateTextBox = New-Object System.Windows.Forms.TextBox
+        $dateTextBox.Location = New-Object Drawing.Point(160, $y)
+        $dateTextBox.Size = New-Object Drawing.Size(130, 30)
+        Set-Style -ctrl $dateTextBox
+        $inputs[$key] = $dateTextBox
+        $form.Controls.Add($dateTextBox)
+
+        $calendarButton = New-Object System.Windows.Forms.Button
+        $calendarButton.Text = "📅"
+        $calendarButton.Location = New-Object Drawing.Point(295, $y)
+        $calendarButton.Size = New-Object Drawing.Size(30, 30)
+        $calendarButton.BackColor = $buttonBackColor
+        $calendarButton.ForeColor = $buttonForeColor
+        $calendarButton.Add_Click({
+            $calForm = New-Object Windows.Forms.Form -Property @{
+                StartPosition = 'CenterScreen'
+                Size          = New-Object Drawing.Size(250, 230)
+                Text          = 'Pick a Date'
+                Topmost       = $true
+            }
+
+            $calendar = New-Object Windows.Forms.MonthCalendar -Property @{
+                ShowTodayCircle   = $false
+                MaxSelectionCount = 1
+            }
+            $calForm.Controls.Add($calendar)
+
+            $okButton = New-Object Windows.Forms.Button -Property @{
+                Location     = New-Object Drawing.Point(40, 165)
+                Size         = New-Object Drawing.Size(75, 23)
+                Text         = 'OK'
+                DialogResult = [Windows.Forms.DialogResult]::OK
+            }
+            $calForm.AcceptButton = $okButton
+            $calForm.Controls.Add($okButton)
+
+            $cancelButton = New-Object Windows.Forms.Button -Property @{
+                Location     = New-Object Drawing.Point(120, 165)
+                Size         = New-Object Drawing.Size(75, 23)
+                Text         = 'Cancel'
+                DialogResult = [Windows.Forms.DialogResult]::Cancel
+            }
+            $calForm.CancelButton = $cancelButton
+            $calForm.Controls.Add($cancelButton)
+
+            if ($calForm.ShowDialog() -eq [Windows.Forms.DialogResult]::OK) {
+                $inputs["StartDate"].Text = $calendar.SelectionStart.ToShortDateString()
+            }
+        })
+        $form.Controls.Add($calendarButton)
+
+    } elseif ($key -in @("Title", "Department", "Office", "Manager")) {
+        $combo = New-Object System.Windows.Forms.ComboBox
+        $combo.DropDownStyle = "DropDownList"
+        $combo.Location = New-Object Drawing.Point(160, $y)
+        $combo.Size = New-Object Drawing.Size(200, 30)
+        switch ($key) {
+            "Title"     { $combo.Items.AddRange($titles) }
+            "Department"{ $combo.Items.AddRange($departments) }
+            "Office"    { $combo.Items.AddRange($offices) }
+            "Manager"   { $combo.Items.AddRange($managers) }
+        }
+        Set-Style -ctrl $combo -isCombo $true
+        $inputs[$key] = $combo
+        $form.Controls.Add($combo)
+    } else {
+        $textBox = New-Object System.Windows.Forms.TextBox
+        $textBox.Location = New-Object Drawing.Point(160, $y)
+        $textBox.Size = New-Object Drawing.Size(200, 30)
+        Set-Style -ctrl $textBox
+        $inputs[$key] = $textBox
+        $form.Controls.Add($textBox)
+    }
+    $y += 40
+}
+
+# Button
+$locationY = $y + 10
+$button = New-Object System.Windows.Forms.Button
+$button.Text = "Create User"
+$button.Location = New-Object Drawing.Point(120, $locationY)
+$button.Size = New-Object Drawing.Size(150, 40)
+$button.Font = $font
+$button.BackColor = $buttonBackColor
+$button.ForeColor = $buttonForeColor
+$form.Controls.Add($button)
+
+# OnClick Logic
+$button.Add_Click({
+    $output = @()
+
+    # Gather inputs
+    $userInput = @{}
+    foreach ($k in $inputs.Keys) {
+        $userInput[$k] = $inputs[$k].Text
+    }
+
+    # Validation
+    if (-not $userInput.FullName -or -not $userInput.Title -or -not $userInput.Department -or -not $userInput.Office) {
+        [System.Windows.Forms.MessageBox]::Show("Full Name, Title, Department, and Office are required.")
+        return
+    }
+
+    # Split name
+    $nameParts = $userInput.FullName -split '\s+'
+    $firstName = $nameParts[0]
+    $lastName = ($nameParts[1..($nameParts.Length - 1)] -join ' ')
+
+    # Generate sAMAccountName
+    $firstInitial = $firstName.Substring(0,1).ToLower()
+    $lastNameClean = ($lastName -replace '[^a-zA-Z]', '').ToLower()
+    $counter = 0
+    do {
+        $loginName = if ($counter -eq 0) { "$firstInitial$lastNameClean" } else { "$firstInitial$lastNameClean$counter" }
+        $exists = Get-ADUser -Filter { SamAccountName -eq $loginName } -ErrorAction SilentlyContinue
+        $counter++
+    } while ($exists)
+    $sAM = if ($userInput.UserLogin) { $userInput.UserLogin } else { $loginName }
+    $upn = "$sAM@$domain"
+
+    # Lookup OU path
+    $depOU = $DepartmentOUs[$userInput.Department]
+    $offOU = $OfficeOUs[$userInput.Office]
+    if (-not $depOU -or -not $offOU) {
+        [System.Windows.Forms.MessageBox]::Show("OU path not found for Department or Office")
+        return
+    }
+
+    $ouPath = "OU=$($userInput.Office),$depOU"
+
+    # Set manager DN if available
+    $managerDN = $null
+    if ($userInput.Manager) {
+        $m = Get-ADUser -Filter { Name -eq $userInput.Manager } -Properties DistinguishedName -ErrorAction SilentlyContinue
+        if ($m) { $managerDN = $m.DistinguishedName }
+    }
+
+# Create User
+try {
+    $notesText = if ($userInput.StartDate) { "Start Date: $($userInput.StartDate)" } else { "" }
+
+    $params = @{
+        Name              = $userInput.FullName
+        GivenName         = $firstName
+        Surname           = $lastName
+        SamAccountName    = $sAM
+        UserPrincipalName = $upn
+        Path              = $ouPath
+        Enabled           = $true
+        DisplayName       = $userInput.FullName
+        EmailAddress      = $userInput.UserEmail
+        Title             = $userInput.Title
+        Department        = $userInput.Department
+        OfficePhone       = $userInput.DeskPhone
+        MobilePhone       = $userInput.CellPhone
+        AccountPassword   = (ConvertTo-SecureString "ChangeMeNow2!" -AsPlainText -Force)
+        ChangePasswordAtLogon = $true
+        Notes             = $notesText
+    }
+        if ($managerDN) { $params["Manager"] = $managerDN }
+
+        New-ADUser @params
+        $output += "User '$($userInput.FullName)' created."
+
+        # Add to title-based group
+        $groupName = $userInput.Title
+        if ($groupName) {
+            try {
+                Add-ADGroupMember -Identity $groupName -Members $sAM
+                $output += "Added to group '$groupName'."
+            } catch {
+                $output += "Group '$groupName' not found or failed to add: $_"
+            }
+        }
+
+        # Log start date (optional)
+        if ($userInput.StartDate) {
+            $output += "Start Date: $($userInput.StartDate)"
+        }
+
+    } catch {
+        $output += "Failed to create user: $_"
+    }
+
+    # Display result
+    [System.Windows.Forms.MessageBox]::Show(($output -join "`n"), "Result")
+})
+
+$form.Add_Shown({ $form.Activate() })
+[void]$form.ShowDialog()
